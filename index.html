@@ -1,0 +1,1343 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+  <title>STAK | Future IT Solutions</title>
+  <meta name="description" content="STAK — IT-решения нового поколения. Разработка, AI, Автоматизация." />
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@100;200;300;400;500&display=swap" rel="stylesheet">
+
+  <style>
+    :root{
+      /* Фон задаем здесь, он будет применяться к canvas */
+      --bg-color:#020202;
+      --text-main:#ffffff;
+      --text-muted:#a0a0a0;
+
+      /* Liquid Glass */
+      --glass-bg: rgba(255, 255, 255, 0.045);
+      --glass-bg-2: rgba(255, 255, 255, 0.012);
+      --glass-border: rgba(255, 255, 255, 0.10);
+      --glass-border-hover: rgba(255, 255, 255, 0.28);
+      --glass-shadow: 0 18px 60px -22px rgba(0,0,0,0.75);
+
+      --font-main:'Montserrat',sans-serif;
+
+      /* CURSOR */
+      --cursor-size: 30px;
+      --dot-size: 4px;
+
+      --safe-top: env(safe-area-inset-top);
+      --safe-bottom: env(safe-area-inset-bottom);
+    }
+
+    *,*::before,*::after{
+      box-sizing:border-box;
+      margin:0;
+      padding:0;
+      cursor:none;
+      -webkit-tap-highlight-color:transparent;
+    }
+
+    /* Делаем body прозрачным, чтобы видеть canvas под ним */
+    html{ scroll-behavior:smooth; background-color: transparent; }
+    body{
+      background-color: transparent;
+      color:var(--text-main);
+      font-family:var(--font-main);
+      overflow-x:hidden;
+      font-weight:300;
+      line-height:1.6;
+      min-height:100vh;
+      min-height:100dvh;
+    }
+    a,button{ text-decoration:none;color:inherit;outline:none;border:none;background:none; }
+    ul{list-style:none;}
+
+    .container{
+      width:90%;
+      max-width:1280px;
+      margin:0 auto;
+      padding:0 20px;
+      position:relative;
+      z-index:2;
+    }
+
+    /* BACKGROUND STARS */
+    #star-canvas{
+      position:fixed;
+      inset:0;
+      width:100%;
+      height:100%;
+      z-index:-1; /* На заднем плане */
+      pointer-events:none;
+      background-color: var(--bg-color); /* Черный цвет здесь */
+    }
+
+    /* Liquid Glass Panel */
+    .glass-panel{
+      background: linear-gradient(135deg, var(--glass-bg), var(--glass-bg-2));
+      backdrop-filter: blur(26px);
+      -webkit-backdrop-filter: blur(26px);
+      border: 1px solid var(--glass-border);
+      box-shadow: var(--glass-shadow);
+      border-radius: 14px;
+      transition: border-color .35s ease, transform .35s ease, box-shadow .35s ease;
+      position:relative;
+      overflow:hidden;
+    }
+    .glass-panel::before{
+      content:"";
+      position:absolute;
+      inset:-1px;
+      background:
+        radial-gradient(1200px 400px at 15% 0%, rgba(255,255,255,0.10), transparent 55%),
+        radial-gradient(900px 300px at 90% 30%, rgba(255,255,255,0.06), transparent 60%);
+      opacity:0.9;
+      pointer-events:none;
+      mix-blend-mode:screen;
+    }
+    .glass-panel::after{
+      content:"";
+      position:absolute;
+      inset:0;
+      background: linear-gradient(120deg, rgba(255,255,255,0.08), transparent 35%, rgba(255,255,255,0.04));
+      opacity:0.15;
+      pointer-events:none;
+    }
+    .glass-panel:hover{
+      border-color:var(--glass-border-hover);
+      transform:translateY(-4px);
+      box-shadow: 0 26px 80px -30px rgba(0,0,0,0.85);
+    }
+
+    /* TYPOGRAPHY */
+    h1,h2,h3,h4{
+      text-transform:uppercase;
+      font-weight:200;
+      color:#fff;
+      letter-spacing:.20em;
+    }
+    h2{
+      font-size:clamp(2rem,5vw,3.5rem);
+      margin-bottom:3rem;
+      letter-spacing:.25em;
+      text-align:center;
+    }
+    p{
+      color:var(--text-muted);
+      font-size:1rem;
+      margin-bottom:1.5rem;
+      line-height:1.7;
+    }
+
+    /* LOGO */
+    .stak-logo{
+      display:inline-flex;
+      align-items:center;
+      justify-content:center;
+      font-family:var(--font-main);
+      font-weight:100;
+      color:#fff;
+      line-height:1;
+      user-select:none;
+      letter-spacing:0.15em;
+      text-transform:uppercase;
+    }
+    .stak-logo .logo-part{ opacity:0; transition:opacity .1s; }
+    .logo-slash{ margin-right:.15em; letter-spacing:0.18em; font-weight:100; }
+    .logo-letter{ font-weight:100; }
+
+    /* PRELOADER */
+    .preloader{
+      position:fixed;
+      inset:0;
+      background:var(--bg-color);
+      z-index:10000;
+      display:flex;
+      justify-content:center;
+      align-items:center;
+      transition:opacity .8s ease, visibility .8s;
+    }
+    .preloader.hidden{ opacity:0; visibility:hidden; pointer-events:none; }
+    .preloader .stak-logo{ font-size:3rem; }
+
+    /* NAVIGATION */
+    .navbar{
+      position:fixed;
+      top:0; left:0;
+      width:100%;
+      padding:20px 0;
+      padding-top:max(20px, var(--safe-top));
+      z-index:100;
+      transition: background .35s, backdrop-filter .35s, border-color .35s;
+    }
+    .navbar.scrolled{
+      background: rgba(2,2,2,.85);
+      backdrop-filter: blur(18px);
+      border-bottom:1px solid rgba(255,255,255,0.08);
+    }
+    .nav-inner{display:flex; justify-content:space-between; align-items:center;}
+    .nav-logo-wrap{ font-size:1.5rem; display:flex; align-items:center; }
+    .nav-logo-wrap .logo-part{ opacity:1; }
+
+    .nav-links{ display:flex; gap:40px; }
+    .nav-links a{
+      font-size:.75rem;
+      text-transform:uppercase;
+      letter-spacing:.15em;
+      color:rgba(255,255,255,.55);
+      transition:color .25s;
+      position:relative;
+      padding-bottom:5px;
+    }
+    .nav-links a::after{
+      content:'';
+      position:absolute;
+      bottom:0; left:0;
+      width:0%;
+      height:1px;
+      background:#fff;
+      transition:width .25s ease;
+    }
+    .nav-links a:hover{ color:#fff; }
+    .nav-links a:hover::after{ width:100%; }
+
+    .burger{
+      display:none;
+      width:30px;
+      height:14px;
+      flex-direction:column;
+      justify-content:space-between;
+      z-index:102;
+    }
+    .burger span{ display:block; height:1px; background:#fff; width:100%; transition:.3s; }
+
+    /* HERO */
+    .hero{
+      height:100vh;
+      height:100dvh;
+      display:flex;
+      flex-direction:column;
+      justify-content:center;
+      align-items:center;
+      text-align:center;
+    }
+    .hero .stak-logo{
+      font-size:clamp(3.5rem,11vw,8rem);
+      margin-bottom:4vh;
+      letter-spacing:0.15em;
+      font-weight:100;
+    }
+    .hero-btn{
+      opacity:0;
+      transform:translateY(20px);
+      font-size:.9rem;
+      text-transform:uppercase;
+      letter-spacing:.25em;
+      color:#fff;
+      display:flex;
+      flex-direction:column;
+      align-items:center;
+      gap:10px;
+      transition:opacity 1.5s ease, transform 1.5s ease;
+      padding:10px 0;
+    }
+    .hero-btn.visible{ opacity:1; transform:translateY(0); }
+    .hero-btn span{ font-weight:300; }
+    .arrow-down{
+      width:1px;
+      height:40px;
+      background:linear-gradient(to bottom, #fff, transparent);
+      opacity:.9;
+    }
+
+    /* ANIMATIONS */
+    .anim-item{ opacity:0; will-change:transform, opacity; }
+    
+    .anim-up{ transform:translateY(30px); transition:opacity 1s ease, transform 1s ease; }
+    .anim-left{ transform:translateX(-30px); transition:opacity 1s ease, transform 1s ease; }
+    .anim-right{ transform:translateX(30px); transition:opacity 1s ease, transform 1s ease; }
+    .anim-blur{ filter:blur(10px); transform:scale(.95); transition:opacity 1s ease, transform 1s ease, filter 1s ease; }
+    
+    .anim-item.in-view{ opacity:1; transform:translate(0,0) scale(1); filter:blur(0); }
+
+    button, .btn-details, .btn-rounded-glow, .btn-partner { transition:all .3s ease; }
+    button:hover, .btn-details:hover, .btn-rounded-glow:hover, .btn-partner:hover{
+      transform:translateY(-2px);
+      box-shadow:0 4px 15px rgba(255,255,255,.10);
+      text-shadow:0 0 8px rgba(255,255,255,.35);
+    }
+
+    /* CURSOR */
+    .cursor-dot,
+    .cursor-outline{
+      position:fixed;
+      top:0; left:0;
+      transform:translate(-50%,-50%);
+      border-radius:50%;
+      z-index:9999;
+      pointer-events:none;
+    }
+    .cursor-dot{
+      width:var(--dot-size);
+      height:var(--dot-size);
+      background:#fff;
+    }
+    .cursor-outline{
+      width:var(--cursor-size);
+      height:var(--cursor-size);
+      border:1px solid rgba(255,255,255,0.95);
+      transition:width .3s, height .3s, border-color .3s, background .3s;
+    }
+    body.hovering .cursor-outline{
+      width:60px;
+      height:60px;
+      background:rgba(255,255,255,.05);
+      border-color:rgba(255,255,255,.30);
+    }
+
+    /* SECTIONS */
+    section{ padding:120px 0; }
+    .about-text-wrap{ max-width:800px; margin:0 auto; text-align:left; }
+    .about-p{
+      font-size:clamp(1.1rem,2.5vw,1.3rem);
+      color:#e0e0e0;
+      text-shadow:0 4px 20px rgba(0,0,0,.8);
+      margin-bottom:2rem;
+      line-height:1.6;
+      text-align:justify;
+      hyphens:auto;
+    }
+
+    .services-grid{ display:grid; grid-template-columns:repeat(6,1fr); gap:24px; justify-content:center; }
+    .service-card{ padding:40px 30px; display:flex; flex-direction:column; justify-content:space-between; min-height:280px; }
+    .col-span-2{ grid-column:span 2; }
+    .row-2-item-1{ grid-column:2 / span 2; }
+    .row-2-item-2{ grid-column:4 / span 2; }
+    .service-card h3{ font-size:1.1rem; margin-bottom:15px; color:#fff; min-height:2.4em; letter-spacing:.10em; font-weight:500; }
+    .service-desc-short{ font-size:.85rem; color:rgba(255,255,255,0.55); margin-bottom:30px; flex-grow:1; }
+    .btn-details{
+      font-size:.7rem;
+      text-transform:uppercase;
+      letter-spacing:.2em;
+      color:#fff;
+      border-bottom:1px solid rgba(255,255,255,.28);
+      width:fit-content;
+      padding-bottom:2px;
+    }
+    .btn-details:hover{ border-color:#fff; }
+
+    /* WHY */
+    .why-list-vertical{
+      display:flex;
+      flex-direction:column;
+      gap:20px;
+      max-width:1000px;
+      margin:0 auto;
+    }
+    .why-item-vertical{
+      display:flex;
+      align-items:flex-start;
+      padding:30px 40px;
+      gap:40px;
+      cursor:default;
+      position:relative;
+      transform: translateY(40px);
+      opacity: 0;
+      transition: opacity 1.4s ease-out, transform 1.4s cubic-bezier(0.22, 1, 0.36, 1), border-color .3s, box-shadow .3s;
+    }
+    .why-item-vertical.in-view {
+      transform: translateY(0);
+      opacity: 1;
+    }
+
+    .why-num{
+      font-size:2rem;
+      font-weight:200;
+      color:rgba(255,255,255,.18);
+      line-height:1;
+      min-width:50px;
+      font-family:var(--font-main);
+      transition:color .3s ease;
+      position:relative;
+      z-index:1;
+    }
+    .why-content{ flex:1; display:flex; flex-direction:column; position:relative; z-index:1; }
+    .why-content h3{
+      font-size:1.25rem;
+      font-weight:500;
+      color:#fff;
+      margin:0;
+      letter-spacing:.05em;
+      line-height:1.3;
+    }
+    .why-desc{
+      max-height:0;
+      opacity:0;
+      overflow:hidden;
+      transition:max-height .3s cubic-bezier(.25,1,.5,1), opacity .3s ease, margin-top .3s ease;
+      margin-top:0;
+      position:relative;
+      z-index:1;
+    }
+    .why-desc p{ font-size:1rem; color:rgba(255,255,255,.72); line-height:1.6; margin:0; }
+    .why-item-vertical:hover, .why-item-vertical.active{
+      border-color:rgba(255,255,255,.25);
+      box-shadow:0 22px 70px -35px rgba(0,0,0,.85);
+    }
+    .why-item-vertical:hover .why-num, .why-item-vertical.active .why-num{
+      color:rgba(255,255,255,.55);
+    }
+    
+    .why-item-vertical:hover .why-desc, .why-item-vertical.active .why-desc{
+      max-height:1000px; 
+      opacity:1;
+      margin-top:15px;
+    }
+    
+    .btn-partner-link{
+      display:inline-block;
+      margin-top:20px;
+      padding:12px 25px;
+      background:rgba(255,255,255,0.05);
+      border:1px solid rgba(255,255,255,.22);
+      border-radius:10px;
+      color:#fff;
+      text-transform:uppercase;
+      letter-spacing:.15em;
+      font-size:.75rem;
+      transition:all .3s ease;
+      position:relative;
+      z-index:1;
+    }
+    .btn-partner-link:hover{
+      background:rgba(255,255,255,0.10);
+      border-color:#fff;
+      box-shadow:0 0 18px rgba(255,255,255,0.10);
+    }
+
+    /* CTA & CASES */
+    .cta-center{ text-align:center; margin-top:40px; }
+    .btn-rounded-glow{
+      padding:18px 50px;
+      border-radius:999px;
+      background:rgba(255,255,255,0.04);
+      border:1px solid rgba(255,255,255,.22);
+      color:#fff;
+      text-transform:uppercase;
+      letter-spacing:.2em;
+      font-size:.9rem;
+      backdrop-filter: blur(18px);
+      -webkit-backdrop-filter: blur(18px);
+    }
+
+    .cases-grid{ display:grid; grid-template-columns:repeat(auto-fit, minmax(320px,1fr)); gap:30px; }
+    .case-card{ display:flex; flex-direction:column; }
+    .case-preview{
+      width:100%;
+      height:260px;
+      background: linear-gradient(135deg, rgba(255,255,255,0.06), rgba(255,255,255,0.015));
+      border:1px solid rgba(255,255,255,0.10);
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      margin-bottom:20px;
+      backdrop-filter: blur(18px);
+      -webkit-backdrop-filter: blur(18px);
+      border-radius:14px;
+      overflow:hidden;
+      position:relative;
+    }
+    .case-preview::before{
+      content:"";
+      position:absolute;
+      inset:-1px;
+      background: radial-gradient(900px 300px at 25% 0%, rgba(255,255,255,0.10), transparent 60%);
+      opacity:0.9;
+      pointer-events:none;
+      mix-blend-mode:screen;
+    }
+    .case-preview span{ position:relative; z-index:1; letter-spacing:.2em; color:rgba(255,255,255,0.22); font-weight:600; }
+    .case-info h3{ font-size:1.3rem; margin-bottom:8px; font-weight:500; }
+    .case-result{ border-left:1px solid #fff; padding-left:15px; font-size:.9rem; color:rgba(255,255,255,.78); margin-top:10px; }
+
+    /* DIRECTORS */
+    .directors-grid{
+      display:grid;
+      grid-template-columns:repeat(2, minmax(280px, 520px));
+      gap:40px;
+      justify-content:center;
+      align-items:stretch;
+    }
+    .director-card{
+      text-align:center;
+      padding:60px 50px 50px;
+      cursor:pointer;
+      border-radius:14px;
+    }
+    .director-avatar{
+      width:140px;
+      height:140px;
+      border-radius:50%;
+      margin:0 auto 28px;
+      
+      /* FIX: Используем cover + top, чтобы заполнить круг и не обрезать голову */
+      background-position: center top;
+      background-size: cover; 
+      background-repeat: no-repeat;
+      background-color: #fff; /* Белый фон для страховки */
+      
+      border:1px solid rgba(255,255,255,.18);
+      box-shadow:0 20px 60px rgba(0,0,0,.45);
+      position:relative;
+      overflow:hidden;
+    }
+    
+    /* Убрали псевдо-элемент ::after, который давал тень/блик, чтобы фото было чистым */
+    .director-avatar::after{
+      display: none; 
+    }
+    
+    .director-title{
+      font-size:1.05rem;
+      letter-spacing:.25em;
+      font-weight:200;
+      color:#fff;
+      margin-bottom:14px;
+    }
+    .director-role{
+      font-size:.7rem;
+      color:rgba(255,255,255,.38);
+      letter-spacing:.22em;
+      text-transform:uppercase;
+      margin-bottom:22px;
+    }
+    .director-desc{
+      color:rgba(255,255,255,.45);
+      font-size:1rem;
+      line-height:1.75;
+      max-width:520px;
+      margin:0 auto;
+    }
+
+    /* FAQ */
+    .faq-grid{ max-width:800px; margin:0 auto; }
+    .faq-item{ border-bottom:1px solid rgba(255,255,255,0.08); }
+    .faq-question{
+      width:100%;
+      padding:25px 0;
+      display:flex;
+      justify-content:space-between;
+      align-items:center;
+      text-align:left;
+      font-size:.95rem;
+      text-transform:uppercase;
+      letter-spacing:.1em;
+      color:rgba(255,255,255,.70);
+      transition:color .3s;
+    }
+    .faq-question:hover{ color:#fff; }
+    .faq-badge{
+      font-size:.6rem;
+      padding:4px 8px;
+      border:1px solid rgba(255,255,255,0.18);
+      margin-right:15px;
+      color:rgba(255,255,255,0.45);
+    }
+    .faq-answer{ max-height:0; overflow:hidden; opacity:0; transition:all .5s ease; }
+    .faq-answer p{ padding-bottom:25px; color:rgba(255,255,255,.55); }
+    .faq-item.active .faq-answer{ max-height:300px; opacity:1; }
+    .faq-item.active .faq-question{ color:#fff; }
+    .faq-icon{ transition:transform .4s; }
+    .faq-item.active .faq-icon{ transform:rotate(45deg); }
+
+    /* FOOTER */
+    footer{
+      padding:80px 0 40px;
+      border-top:1px solid rgba(255,255,255,0.08);
+      text-align:center;
+      font-size:.8rem;
+      color:rgba(255,255,255,0.35);
+    }
+    .footer-logo{ font-size:1.5rem; margin-bottom:20px; opacity:.6; }
+    .footer-logo .logo-part{ opacity:1; }
+
+    /* MODAL */
+    .modal-overlay{
+      position:fixed;
+      inset:0;
+      background:rgba(0,0,0,.85);
+      backdrop-filter:blur(10px);
+      z-index:2000;
+      opacity:0;
+      visibility:hidden;
+      display:flex;
+      justify-content:center;
+      align-items:center;
+      transition:opacity .3s ease, visibility .3s;
+    }
+    .modal-overlay.open{ opacity:1; visibility:visible; }
+    .modal-box{
+      width:90%;
+      max-width:650px;
+      max-height:85vh;
+      overflow-y:auto;
+      background: linear-gradient(135deg, rgba(255,255,255,0.06), rgba(0,0,0,0.75));
+      border:1px solid rgba(255,255,255,0.16);
+      padding:60px 40px;
+      border-radius:14px;
+      position:relative;
+      transform:scale(.92);
+      opacity:0;
+      transition:transform .3s cubic-bezier(.25,1,.5,1), opacity .3s ease;
+      backdrop-filter: blur(22px);
+      -webkit-backdrop-filter: blur(22px);
+    }
+    .modal-overlay.open .modal-box{ transform:scale(1); opacity:1; }
+    .close-modal{
+      position:absolute;
+      top:20px; right:20px;
+      font-size:2rem;
+      line-height:1;
+      color:#fff;
+      opacity:.55;
+      transition:.3s;
+    }
+    .close-modal:hover{ opacity:1; }
+    .modal-title{ font-size:1.8rem; margin-bottom:25px; letter-spacing:.1em; }
+    .modal-body{ color:rgba(255,255,255,.80); line-height:1.8; font-size:1rem; }
+    .modal-bullets{ margin-top:20px; }
+    .modal-bullets li{ margin-bottom:12px; padding-left:20px; position:relative; color:rgba(255,255,255,.82); }
+    .modal-bullets li::before{ content:'/'; position:absolute; left:0; color:#fff; font-weight:bold; }
+
+    /* RESPONSIVE */
+    @media (max-width:1024px){
+      .services-grid{ grid-template-columns:repeat(2,1fr); }
+      .col-span-2, .row-2-item-1, .row-2-item-2{ grid-column:span 1; }
+      .directors-grid{ grid-template-columns:1fr; }
+    }
+
+    @media (max-width:768px){
+      :root{ --cursor-size:0px; }
+      .cursor-dot, .cursor-outline{ display:none; }
+      *{ cursor:auto; }
+
+      .navbar{ padding:15px 0; }
+      .nav-links{
+        position:fixed;
+        top:0; right:0;
+        width:100%;
+        height:100dvh;
+        background:#000;
+        flex-direction:column;
+        justify-content:center;
+        align-items:center;
+        transform:translateX(100%);
+        transition:.5s ease;
+        z-index:101;
+      }
+      .nav-links.active{ transform:translateX(0); }
+      .burger{ display:flex; }
+
+      /* HEADINGS fix */
+      h2{ 
+        font-size:1.8rem;
+        margin-bottom:2rem; 
+        letter-spacing: 0.1em; /* Уменьшили интервал, чтобы влезало */
+        word-wrap: break-word;
+        padding: 0 10px;
+      }
+      
+      section{ padding:60px 0; }
+      .services-grid{ grid-template-columns:1fr; }
+      .modal-box{ padding:40px 20px; width:95%; }
+      .preloader .stak-logo{ font-size:2.2rem; }
+      
+      /* AUTOMATION HUB fix */
+      .cta-center h2 { font-size: 1.6rem; }
+      .btn-rounded-glow {
+          padding: 16px 20px; /* Меньше паддинг */
+          width: 100%;
+          max-width: 320px;
+          font-size: 0.8rem;
+          white-space: nowrap; /* Запрет переноса строки */
+          display: inline-flex;
+          justify-content: center;
+      }
+
+      /* ABOUT TEXT FIX (Убираем разрывы слов и выравниваем влево) */
+      .about-p{ 
+        text-align:left; 
+        font-size: 1rem;
+        hyphens: none; 
+        -webkit-hyphens: none;
+      }
+
+      /* PARTNERS / WHY */
+      .why-item-vertical{ flex-direction:column; gap:15px; padding:25px 20px; }
+      .why-num{ font-size:1.5rem; }
+      .btn-partner-link {
+          width: 100%;
+          text-align: center;
+          margin-top: 25px;
+          white-space: nowrap;
+      }
+
+      /* DIRECTORS FIX */
+      .director-card{ padding:50px 20px 40px; } /* Уменьшили боковые отступы */
+      .director-avatar{ width:120px; height:120px; }
+
+      /* FAQ FIX (Бейдж сверху) */
+      .faq-question { align-items: flex-start; }
+      .faq-question > div {
+          display: flex;
+          flex-direction: column;
+          align-items: flex-start;
+          gap: 10px;
+          max-width: 85%;
+      }
+      .faq-badge {
+          margin-right: 0;
+          font-size: 0.55rem;
+          padding: 3px 6px;
+      }
+      .faq-icon {
+          margin-top: 5px;
+          min-width: 20px;
+          text-align: right;
+      }
+    }
+    
+    @media (max-width: 380px) {
+        h2 { font-size: 1.5rem; }
+        .btn-rounded-glow { font-size: 0.7rem; padding: 15px 15px; }
+    }
+  </style>
+</head>
+
+<body>
+  <canvas id="star-canvas"></canvas>
+
+  <div class="cursor-dot"></div>
+  <div class="cursor-outline"></div>
+
+  <!-- PRELOADER -->
+  <div class="preloader">
+    <div class="stak-logo" aria-label="STAK">
+      <span class="logo-part logo-slash">/</span>
+      <span class="logo-part logo-letter">S</span>
+      <span class="logo-part logo-letter">T</span>
+      <span class="logo-part logo-letter">A</span>
+      <span class="logo-part logo-letter">K</span>
+    </div>
+  </div>
+
+  <!-- NAVBAR -->
+  <nav class="navbar">
+    <div class="container nav-inner">
+      <a href="#" class="nav-logo-wrap hover-trigger" aria-label="STAK">
+        <div class="stak-logo" style="font-size:1.2rem;">
+          <span class="logo-part logo-slash">/</span>
+          <span class="logo-part logo-letter">S</span>
+          <span class="logo-part logo-letter">T</span>
+          <span class="logo-part logo-letter">A</span>
+          <span class="logo-part logo-letter">K</span>
+        </div>
+      </a>
+
+      <div class="burger hover-trigger" aria-label="Меню" role="button" tabindex="0">
+        <span></span><span></span><span></span>
+      </div>
+
+      <ul class="nav-links">
+        <li><a href="#about" class="hover-trigger">О компании</a></li>
+        <li><a href="#services" class="hover-trigger">Услуги</a></li>
+        <li><a href="#cases" class="hover-trigger">Кейсы</a></li>
+        <li><a href="#why" class="hover-trigger">Преимущества</a></li>
+        <li><a href="#faq" class="hover-trigger">FAQ</a></li>
+      </ul>
+    </div>
+  </nav>
+
+  <!-- HERO -->
+  <header class="hero">
+    <div class="stak-logo" id="hero-logo" aria-label="STAK">
+      <span class="logo-part logo-slash">/</span>
+      <span class="logo-part logo-letter">S</span>
+      <span class="logo-part logo-letter">T</span>
+      <span class="logo-part logo-letter">A</span>
+      <span class="logo-part logo-letter">K</span>
+    </div>
+
+    <a href="#about" class="hero-btn hover-trigger" aria-label="О нас">
+      <span>О нас</span>
+      <div class="arrow-down" aria-hidden="true"></div>
+    </a>
+  </header>
+
+  <!-- ABOUT -->
+  <section id="about">
+    <div class="container">
+      <div class="about-text-wrap anim-item">
+        <h2>О Компании</h2>
+        <div class="about-p">STAK — IT-решения нового поколения для бизнеса в эпоху нейросетей.</div>
+        <div class="about-p">Мы создаём современные, быстрые и доступные цифровые продукты, которые помогают компаниям работать эффективнее, сокращать затраты и увеличивать прибыль.</div>
+        <div class="about-p" style="color:#fff;">STAK объединяет экспертизу в разработке, автоматизации и AI-технологиях, предоставляя профессиональные IT-услуги по максимально разумной цене с самым актуальным функционалом.</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- SERVICES -->
+  <section id="services">
+    <div class="container">
+      <h2>Наши Услуги</h2>
+      <div class="services-grid">
+        <div class="service-card glass-panel col-span-2 anim-item hover-trigger" data-id="bots">
+          <h3>Разработка ботов</h3>
+          <p class="service-desc-short">Любая сложность для всех популярных соцсетей.</p>
+          <button class="btn-details">Подробнее</button>
+        </div>
+
+        <div class="service-card glass-panel col-span-2 anim-item hover-trigger" data-id="sites">
+          <h3>Сайты + CMS</h3>
+          <p class="service-desc-short">Самописные решения и Tilda/WordPress. Бестселлер.</p>
+          <button class="btn-details">Подробнее</button>
+        </div>
+
+        <div class="service-card glass-panel col-span-2 anim-item hover-trigger" data-id="seo">
+          <h3>SEO-продвижение</h3>
+          <p class="service-desc-short">Комплексное развитие и органический трафик.</p>
+          <button class="btn-details">Подробнее</button>
+        </div>
+
+        <div class="service-card glass-panel row-2-item-1 anim-item hover-trigger" data-id="design">
+          <h3>Дизайн и UI/UX</h3>
+          <p class="service-desc-short">Адаптивная вёрстка и премиальная эстетика.</p>
+          <button class="btn-details">Подробнее</button>
+        </div>
+
+        <div class="service-card glass-panel row-2-item-2 anim-item hover-trigger" data-id="tma">
+          <h3>Telegram Mini Apps</h3>
+          <p class="service-desc-short">Приложения нового формата внутри мессенджера.</p>
+          <button class="btn-details">Подробнее</button>
+        </div>
+
+        <div class="service-card glass-panel row-2-item-1 anim-item hover-trigger" data-id="ads">
+          <h3>Telegram Ads + Боты</h3>
+          <p class="service-desc-short">Настройка рекламы и автоматизация воронок.</p>
+          <button class="btn-details">Подробнее</button>
+        </div>
+
+        <div class="service-card glass-panel row-2-item-2 anim-item hover-trigger" data-id="web">
+          <h3>Web-приложения</h3>
+          <p class="service-desc-short">Кабинеты, сервисы, SPA.</p>
+          <button class="btn-details">Подробнее</button>
+        </div>
+
+        <div class="service-card glass-panel col-span-2 anim-item hover-trigger" data-id="smm">
+          <h3>SMM</h3>
+          <p class="service-desc-short">Ведение и упаковка соцсетей.</p>
+          <button class="btn-details">Подробнее</button>
+        </div>
+
+        <div class="service-card glass-panel col-span-2 anim-item hover-trigger" data-id="ai">
+          <h3>AI-помощники</h3>
+          <p class="service-desc-short">Автоматизация бизнес-процессов.</p>
+          <button class="btn-details">Подробнее</button>
+        </div>
+
+        <div class="service-card glass-panel col-span-2 anim-item hover-trigger" data-id="neuro">
+          <h3>Нейросети</h3>
+          <p class="service-desc-short">Разработка под задачи компании.</p>
+          <button class="btn-details">Подробнее</button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- AUTOMATION HUB CTA -->
+  <section>
+    <div class="container cta-center anim-item">
+      <h2 style="margin-bottom:50px;">AUTOMATION HUB</h2>
+      <a href="https://t.me/stak_development_bot" target="_blank" rel="noopener" class="btn-rounded-glow hover-trigger">Заказать через бота</a>
+    </div>
+  </section>
+
+  <!-- CASES -->
+  <section id="cases">
+    <div class="container">
+      <h2>Успешные Кейсы</h2>
+      <div class="cases-grid">
+        <div class="case-card anim-item hover-trigger">
+          <div class="case-preview"><span>FINTECH</span></div>
+          <div class="case-info">
+            <h3>Crypto Wallet Bot</h3>
+            <p style="margin:0; font-size:0.9rem;">Telegram Mini App для обмена.</p>
+            <div class="case-result">Рост пользователей x3</div>
+          </div>
+        </div>
+
+        <div class="case-card anim-item hover-trigger">
+          <div class="case-preview"><span>E-COMMERCE</span></div>
+          <div class="case-info">
+            <h3>Brand Store</h3>
+            <p style="margin:0; font-size:0.9rem;">Интернет-магазин на Tilda.</p>
+            <div class="case-result">Автоматизация заказов</div>
+          </div>
+        </div>
+
+        <div class="case-card anim-item hover-trigger">
+          <div class="case-preview"><span>AI SUPPORT</span></div>
+          <div class="case-info">
+            <h3>GPT Support Agent</h3>
+            <p style="margin:0; font-size:0.9rem;">Внедрение AI в техподдержку.</p>
+            <div class="case-result">-70% нагрузки на колл-центр</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- WHY -->
+  <section id="why">
+    <div class="container">
+      <h2>ПОЧЕМУ МЫ</h2>
+      <div class="why-list-vertical">
+
+        <div class="why-item-vertical glass-panel hover-trigger">
+          <span class="why-num">01</span>
+          <div class="why-content">
+            <h3>Самая быстрая и бюджетная разработка в СНГ</h3>
+            <div class="why-desc">
+              <p>Мы запускаем проекты быстрее всех на рынке и по стоимости, доступной даже малому бизнесу. Клиент получает готовый инструмент продаж уже в течение нескольких дней — без переплат и затягиваний.</p>
+            </div>
+          </div>
+        </div>
+
+        <div class="why-item-vertical glass-panel hover-trigger">
+          <span class="why-num">02</span>
+          <div class="why-content">
+            <h3>Работа строго по договору</h3>
+            <div class="why-desc">
+              <p>Все сроки, цены и обязательства фиксируются заранее. Никаких сюрпризов, скрытых платежей и “доделок за доплату”. Только чистая, прозрачная работа по правилам, которые защищают заказчика.</p>
+            </div>
+          </div>
+        </div>
+
+        <div class="why-item-vertical glass-panel hover-trigger">
+          <span class="why-num">03</span>
+          <div class="why-content">
+            <h3>Максимальная вовлечённость в каждый проект</h3>
+            <div class="why-desc">
+              <p>Мы погружаемся в продукт так, будто делаем его для себя. Разбираемся в нише, сценариях продаж, точках роста — и создаём систему, которая приносит деньги, а не просто красиво выглядит.</p>
+            </div>
+          </div>
+        </div>
+
+        <div class="why-item-vertical glass-panel hover-trigger">
+          <span class="why-num">04</span>
+          <div class="why-content">
+            <h3>Каждый клиент — наш полноценный партнёр</h3>
+            <div class="why-desc">
+              <p>Мы строим отношения, при которых клиент не просто получает продукт — он становится нашим партнёром. Если он рекомендует нас знакомым и коллегам, он получает 50% от каждой сделки. Это самое высокое партнёрское вознаграждение в СНГ.</p>
+              <a href="https://t.me/stak_development_bot" target="_blank" rel="noopener" class="btn-partner-link hover-trigger">Стать партнёром</a>
+            </div>
+          </div>
+        </div>
+
+        <div class="why-item-vertical glass-panel hover-trigger">
+          <span class="why-num">05</span>
+          <div class="why-content">
+            <h3>Наш личный коммерческий интерес — довести проект до идеала</h3>
+            <div class="why-desc">
+              <p>Мы зарабатываем, когда клиент доволен. Поэтому доводим каждый проект до результата, который вызывает эффект «вау» и уверенность, что нас можно смело рекомендовать.</p>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </section>
+
+  <!-- DIRECTORS -->
+  <section>
+    <div class="container">
+      <h2>Руководство</h2>
+
+      <div class="directors-grid">
+        <div class="director-card glass-panel anim-item hover-trigger" data-key="ceo">
+          <div class="director-avatar" aria-hidden="true" style="background-image: url('ceo.jpg');"></div>
+          <div class="director-title">CEO / FOUNDER</div>
+          <div class="director-role">СТРАТЕГИЯ</div>
+          <div class="director-desc">Эксперт в построении бизнес-процессов и масштабировании IT-продуктов.</div>
+        </div>
+
+        <div class="director-card glass-panel anim-item hover-trigger" data-key="cto">
+          <div class="director-avatar" aria-hidden="true" style="background-image: url('cto.jpg');"></div>
+          <div class="director-title">CTO / TECH LEAD</div>
+          <div class="director-role">РАЗРАБОТКА</div>
+          <div class="director-desc">Архитектура высоконагруженных систем и внедрение AI-технологий.</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- FAQ -->
+  <section id="faq">
+    <div class="container">
+      <h2>FAQ</h2>
+      <div class="faq-grid anim-item">
+        <div class="faq-item">
+          <button class="faq-question hover-trigger">
+            <div><span class="faq-badge">Старт</span>Как начинается работа?</div>
+            <span class="faq-icon">+</span>
+          </button>
+          <div class="faq-answer"><p>Мы обсуждаем задачу, составляем ТЗ, подписываем договор и приступаем к работе после предоплаты.</p></div>
+        </div>
+
+        <div class="faq-item">
+          <button class="faq-question hover-trigger">
+            <div><span class="faq-badge">Сроки</span>Какие сроки запуска?</div>
+            <span class="faq-icon">+</span>
+          </button>
+          <div class="faq-answer"><p>От 3 дней для простых ботов до 1 месяца для сложных приложений.</p></div>
+        </div>
+
+        <div class="faq-item">
+          <button class="faq-question hover-trigger">
+            <div><span class="faq-badge">Инфо</span>Что нужно от клиента?</div>
+            <span class="faq-icon">+</span>
+          </button>
+          <div class="faq-answer"><p>Только идея или описание задачи. Мы поможем оформить это в ТЗ.</p></div>
+        </div>
+
+        <div class="faq-item">
+          <button class="faq-question hover-trigger">
+            <div><span class="faq-badge">Support</span>Делаете ли вы поддержку?</div>
+            <span class="faq-icon">+</span>
+          </button>
+          <div class="faq-answer"><p>Да, мы обеспечиваем техническую поддержку и развитие проекта после запуска.</p></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- FOOTER -->
+  <footer>
+    <div class="container">
+      <div class="stak-logo footer-logo" aria-label="STAK">
+        <span class="logo-part logo-slash">/</span>
+        <span class="logo-part logo-letter">S</span>
+        <span class="logo-part logo-letter">T</span>
+        <span class="logo-part logo-letter">A</span>
+        <span class="logo-part logo-letter">K</span>
+      </div>
+      <p>&copy; 2025 STAK. All rights reserved.</p>
+    </div>
+  </footer>
+
+  <!-- MODAL -->
+  <div class="modal-overlay" id="modal">
+    <div class="modal-box">
+      <button class="close-modal hover-trigger" aria-label="Закрыть">&times;</button>
+      <h3 class="modal-title" id="m-title">Title</h3>
+      <div class="modal-body" id="m-body">Text</div>
+    </div>
+  </div>
+
+  <script>
+    document.addEventListener('DOMContentLoaded', () => {
+
+      const servicesDB = {
+        'bots': "Полный цикл разработки чат-ботов для автоматизации бизнеса.<ul class='modal-bullets'><li>Сложные воронки продаж и сценарии</li><li>Интеграция с CRM (AmoCRM, Bitrix24)</li><li>Платежные системы и магазины внутри Telegram</li><li>AI-консультанты на базе GPT-4</li></ul>Результат: Автоматическая обработка лидов и снижение расходов на персонал.",
+        'sites': "Разработка веб-сайтов с акцентом на скорость и конверсию.<ul class='modal-bullets'><li>Продающие лендинги на Tilda (Zero Block)</li><li>Сложные корпоративные сайты на WordPress/Laravel</li><li>Уникальный дизайн и анимации</li><li>Адаптив под все устройства</li></ul>Результат: Современное лицо бизнеса и рост заявок.",
+        'seo': "Комплексное SEO-продвижение для органического роста.<ul class='modal-bullets'><li>Технический аудит и исправление ошибок</li><li>Сбор семантического ядра и кластеризация</li><li>Наращивание ссылочной массы (Link Building)</li><li>Оптимизация контента и мета-тегов</li></ul>Результат: Стабильный поток бесплатных клиентов из Google/Яндекс.",
+        'design': "Продуктовый дизайн и UX/UI проектирование.<ul class='modal-bullets'><li>Прототипирование интерфейсов (Figma)</li><li>Разработка дизайн-систем</li><li>Редизайн устаревших продуктов</li><li>Анимированные интерфейсы</li></ul>Результат: Удобный продукт, который удерживает пользователей.",
+        'tma': "Telegram Mini Apps — тренд 2025 года.<ul class='modal-bullets'><li>Полноценные веб-приложения внутри мессенджера</li><li>Авторизация в один клик</li><li>Доступ к камере и геолокации</li><li>Крипто-кошельки и сервисы доставки</li></ul>Результат: Максимальная конверсия за счет удобства доступа.",
+        'ads': "Таргетированная реклама Telegram Ads под ключ.<ul class='modal-bullets'><li>Официальная реклама в каналах конкурентов</li><li>Создание креативов и текстов</li><li>Связка с чат-ботом для автопродаж</li><li>Аналитика и оптимизация бюджета</li></ul>Результат: Дешевые и целевые лиды прямо в бот.",
+        'web': "Разработка сложных веб-сервисов и SaaS.<ul class='modal-bullets'><li>Single Page Applications (React/Vue)</li><li>Личные кабинеты пользователей</li><li>Высоконагруженные системы</li><li>Безопасная архитектура</li></ul>Результат: Масштабируемый IT-продукт для вашего бизнеса.",
+        'smm': "Комплексное ведение социальных сетей.<ul class='modal-bullets'><li>Разработка контент-стратегии</li><li>Визуальная упаковка профиля</li><li>Съемка и монтаж Reels/Shorts</li><li>Комьюнити-менеджмент</li></ul>Результат: Лояльная аудитория и рост узнаваемости бренда.",
+        'ai': "Внедрение искусственного интеллекта в бизнес-процессы.<ul class='modal-bullets'><li>Анализ звонков и переписок</li><li>Генерация контента и отчетов</li><li>Голосовые ассистенты</li><li>Предиктивная аналитика</li></ul>Результат: Исключение человеческого фактора и ускорение работы.",
+        'neuro': "Обучение нейросетей под ваши задачи.<ul class='modal-bullets'><li>Файн-тюнинг LLM моделей</li><li>Компьютерное зрение (Computer Vision)</li><li>Обработка естественного языка (NLP)</li><li>Локальные нейросети на ваших серверах</li></ul>Результат: Уникальное технологическое преимущество."
+      };
+
+      const directorsDB = {
+        'ceo': "Стратегическое управление и развитие.<br><br>Опыт запуска более 50 IT-продуктов. Отвечает за качество сервиса, глобальное видение компании и партнёрские отношения. Гарант выполнения обязательств перед ключевыми клиентами.",
+        'cto': "Техническая архитектура и инновации.<br><br>Эксперт в AI и Web3. Отвечает за стек технологий, code review, безопасность данных и внедрение передовых решений в проекты клиентов."
+      };
+
+      function typeLogo(containerSelector, callback) {
+        const parts = document.querySelectorAll(`${containerSelector} .logo-part`);
+        let delay = 0;
+        parts.forEach((part) => {
+          setTimeout(() => { part.style.opacity = '1'; }, delay);
+          delay += 100 + Math.random() * 50;
+        });
+        if (callback) setTimeout(callback, delay + 200);
+      }
+
+      const preloader = document.querySelector('.preloader');
+      const heroBtn = document.querySelector('.hero-btn');
+
+      typeLogo('.preloader', () => {
+        preloader.style.opacity = '0';
+        setTimeout(() => {
+          preloader.classList.add('hidden');
+          typeLogo('#hero-logo', () => { heroBtn.classList.add('visible'); });
+        }, 800);
+      });
+
+      const animOptions = ['anim-up', 'anim-left', 'anim-right', 'anim-blur'];
+      let lastAnimIndex = -1;
+      function getRandomAnimClass() {
+        let newIndex;
+        do { newIndex = Math.floor(Math.random() * animOptions.length); }
+        while (newIndex === lastAnimIndex);
+        lastAnimIndex = newIndex;
+        return animOptions[newIndex];
+      }
+
+      const observer = new IntersectionObserver((entries) => {
+        entries.forEach(entry => {
+          if (entry.isIntersecting) {
+            entry.target.classList.add('in-view');
+            observer.unobserve(entry.target);
+          }
+        });
+      }, { threshold: 0.1 });
+
+      document.querySelectorAll('.anim-item').forEach(el => {
+        if (!el.closest('.services-grid')) el.classList.add(getRandomAnimClass());
+        else el.classList.add('anim-up');
+        observer.observe(el);
+      });
+
+      const serviceCards = document.querySelectorAll('.services-grid .service-card');
+      serviceCards.forEach((card, index) => { card.style.transitionDelay = `${index * 0.1}s`; });
+
+      const whyCards = document.querySelectorAll('.why-item-vertical');
+      whyCards.forEach(card => {
+        card.addEventListener('click', () => {
+          if (window.innerWidth <= 1024) {
+            const isActive = card.classList.contains('active');
+            whyCards.forEach(c => c.classList.remove('active'));
+            if (!isActive) card.classList.add('active');
+          }
+        });
+      });
+
+      /* CURSOR (Interactive & Parallax Logic) */
+      const cursorDot = document.querySelector('.cursor-dot');
+      const cursorOutline = document.querySelector('.cursor-outline');
+
+      let aimX = window.innerWidth / 2;
+      let aimY = window.innerHeight / 2;
+      let curX = aimX, curY = aimY;
+      
+      let mouseX_centered = 0;
+      let mouseY_centered = 0;
+      let targetParallaxX = 0;
+      let targetParallaxY = 0;
+      let currentParallaxX = 0;
+      let currentParallaxY = 0;
+
+      if (window.matchMedia("(min-width: 769px)").matches) {
+        document.addEventListener('mousemove', (e) => {
+          aimX = e.clientX;
+          aimY = e.clientY;
+          
+          cursorDot.style.left = aimX + 'px';
+          cursorDot.style.top = aimY + 'px';
+          
+          mouseX_centered = (aimX - window.innerWidth / 2) / window.innerWidth;
+          mouseY_centered = (aimY - window.innerHeight / 2) / window.innerHeight;
+        });
+
+        function animateCursor() {
+          curX += (aimX - curX) * 0.15;
+          curY += (aimY - curY) * 0.15;
+          cursorOutline.style.left = curX + 'px';
+          cursorOutline.style.top = curY + 'px';
+          
+          requestAnimationFrame(animateCursor);
+        }
+        animateCursor();
+
+        document.querySelectorAll('.hover-trigger').forEach(el => {
+          el.addEventListener('mouseenter', () => document.body.classList.add('hovering'));
+          el.addEventListener('mouseleave', () => document.body.classList.remove('hovering'));
+        });
+      }
+
+      /* STARFIELD CANVAS (FINE STARS + MOVING + BLINKING + PARALLAX) */
+      const canvas = document.getElementById('star-canvas');
+      const ctx = canvas.getContext('2d', { alpha: true });
+
+      let width, height, dpr;
+      let stars = [];
+      const STAR_COUNT = 400; // Немного больше звезд, так как они мелкие
+
+      class Star {
+        constructor() {
+          this.init(true);
+        }
+
+        init(first = false) {
+          this.nx = Math.random(); 
+          this.ny = first ? Math.random() : 1.05;
+
+          // ИЗМЕНЕНО: Размер теперь строго мелкий (0.4px - 1.3px)
+          // 95% звезд - очень мелкая пыль (0.4-1.0), 5% чуть крупнее (1.0-1.4)
+          this.size = Math.random() < 0.95 ? (Math.random() * 0.6 + 0.4) : (Math.random() * 0.4 + 1.0);
+          
+          // Скорость по-прежнему зависит от размера для объема, но очень медленная
+          this.speedY = (0.0001 + this.size * 0.00005) * 0.5;
+
+          this.blinkSpeed = Math.random() * 0.4 + 0.1;
+          this.blinkPhase = Math.random() * Math.PI * 2;
+        }
+
+        update() {
+           this.ny -= this.speedY;
+           if (this.ny < -0.05) {
+             this.init(false);
+           }
+        }
+
+        draw(t) {
+          const parallaxX = currentParallaxX * this.size * 20; 
+          const parallaxY = currentParallaxY * this.size * 20;
+
+          const x = this.nx * width + parallaxX;
+          const y = this.ny * height + parallaxY;
+
+          // Мерцание от 0 до 1
+          const alpha = 0.5 + 0.5 * Math.sin(t * 0.001 * this.blinkSpeed + this.blinkPhase);
+          
+          // ИЗМЕНЕНО: Свечение убрано почти полностью, чтобы не было "жирноты"
+          // Оставляем едва заметный glow только самым крупным (которых 5%)
+          if (this.size < 1.2) {
+             ctx.shadowBlur = 0;
+          } else {
+             ctx.shadowBlur = 2; // Минимальное свечение
+             ctx.shadowColor = `rgba(255, 255, 255, ${alpha * 0.5})`;
+          }
+
+          ctx.globalAlpha = Math.max(0, Math.min(1, alpha));
+          ctx.fillStyle = '#ffffff';
+
+          ctx.beginPath();
+          ctx.arc(x, y, this.size, 0, Math.PI * 2);
+          ctx.fill();
+
+          ctx.shadowBlur = 0;
+          ctx.globalAlpha = 1;
+        }
+      }
+
+      function resize() {
+        dpr = Math.max(1, Math.min(2, window.devicePixelRatio || 1));
+        width = window.innerWidth;
+        height = window.innerHeight;
+
+        canvas.width = Math.floor(width * dpr);
+        canvas.height = Math.floor(height * dpr);
+        canvas.style.width = width + 'px';
+        canvas.style.height = height + 'px';
+
+        ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+        
+        if (stars.length === 0) {
+           for (let i = 0; i < STAR_COUNT; i++) stars.push(new Star());
+        }
+      }
+
+      function drawVignette() {
+        const g = ctx.createRadialGradient(width * 0.5, height * 0.5, Math.min(width, height) * 0.2,
+                                           width * 0.5, height * 0.5, Math.max(width, height) * 0.9);
+        g.addColorStop(0, 'rgba(0,0,0,0)');
+        g.addColorStop(1, 'rgba(0,0,0,0.5)'); 
+        ctx.fillStyle = g;
+        ctx.fillRect(0, 0, width, height);
+      }
+
+      function animateStars(t) {
+        ctx.clearRect(0, 0, width, height);
+        
+        targetParallaxX = -mouseX_centered * 2;
+        targetParallaxY = -mouseY_centered * 2;
+        
+        currentParallaxX += (targetParallaxX - currentParallaxX) * 0.05;
+        currentParallaxY += (targetParallaxY - currentParallaxY) * 0.05;
+
+        for (const s of stars) {
+          s.update(); 
+          s.draw(t); 
+        }
+        
+        drawVignette();
+        requestAnimationFrame(animateStars);
+      }
+
+      window.addEventListener('resize', resize);
+      resize();
+      requestAnimationFrame(animateStars);
+
+      /* MODAL */
+      const modal = document.getElementById('modal');
+      const mTitle = document.getElementById('m-title');
+      const mBody = document.getElementById('m-body');
+
+      function openModal(t, b) {
+        mTitle.innerHTML = t;
+        mBody.innerHTML = b;
+        modal.classList.add('open');
+        document.body.style.overflow = 'hidden';
+      }
+      function closeModal() {
+        modal.classList.remove('open');
+        document.body.style.overflow = '';
+      }
+
+      document.querySelectorAll('.btn-details').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+          e.stopPropagation();
+          const id = btn.closest('.service-card').dataset.id;
+          if (servicesDB[id]) openModal(btn.closest('.service-card').querySelector('h3').textContent, servicesDB[id]);
+        });
+      });
+
+      document.querySelectorAll('.director-card').forEach(card => {
+        card.addEventListener('click', () => {
+          const key = card.dataset.key;
+          if (directorsDB[key]) openModal(card.querySelector('.director-title').textContent, directorsDB[key]);
+        });
+      });
+
+      document.querySelector('.close-modal').addEventListener('click', closeModal);
+      modal.addEventListener('click', e => { if (e.target === modal) closeModal(); });
+      document.addEventListener('keydown', e => { if (e.key === 'Escape') closeModal(); });
+
+      /* FAQ & NAV */
+      document.querySelectorAll('.faq-question').forEach(btn => btn.addEventListener('click', () => btn.parentElement.classList.toggle('active')));
+
+      const burger = document.querySelector('.burger');
+      const nav = document.querySelector('.nav-links');
+
+      burger.addEventListener('click', () => nav.classList.toggle('active'));
+      burger.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' || e.key === ' ') nav.classList.toggle('active');
+      });
+
+      nav.querySelectorAll('a').forEach(l => l.addEventListener('click', () => nav.classList.remove('active')));
+      window.addEventListener('scroll', () => {
+        document.querySelector('.navbar').classList.toggle('scrolled', window.scrollY > 50);
+      });
+    });
+  </script>
+</body>
+</html>
